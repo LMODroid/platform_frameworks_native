@@ -96,6 +96,9 @@ struct InputReaderConfiguration {
         // The key remapping has changed.
         KEY_REMAPPING = 1u << 14,
 
+        // Volume keys rotation option changed.
+        VOLUME_KEYS_ROTATION = 1u << 15,
+
         // All devices must be reopened.
         MUST_REOPEN = 1u << 31,
     };
@@ -252,6 +255,10 @@ struct InputReaderConfiguration {
     // Keycodes to be remapped.
     std::map<int32_t /* fromKeyCode */, int32_t /* toKeyCode */> keyRemapping;
 
+    // Remap volume keys according to display rotation
+    // 0 - disabled, 1 - phone or hybrid rotation mode, 2 - tablet rotation mode
+    int volumeKeysRotationMode;
+
     InputReaderConfiguration()
           : virtualKeyQuietTime(0),
             defaultPointerDisplayId(ui::LogicalDisplayId::DEFAULT),
@@ -282,7 +289,8 @@ struct InputReaderConfiguration {
             shouldNotifyTouchpadHardwareState(false),
             touchpadRightClickZoneEnabled(false),
             stylusButtonMotionEventsEnabled(true),
-            stylusPointerIconEnabled(false) {}
+            stylusPointerIconEnabled(false),
+            volumeKeysRotationMode(0) {}
 
     std::optional<DisplayViewport> getDisplayViewportByType(ViewportType type) const;
     std::optional<DisplayViewport> getDisplayViewportByUniqueId(const std::string& uniqueDisplayId)

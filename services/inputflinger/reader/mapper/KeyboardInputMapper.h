@@ -66,6 +66,8 @@ private:
 
     std::optional<KeyboardLayoutInfo> mKeyboardLayoutInfo;
 
+    int32_t mRotationMapOffset; // determines if and how volume keys rotate
+
     std::vector<KeyDown> mKeyDowns{}; // keys that are down
     int32_t mMetaState{};
 
