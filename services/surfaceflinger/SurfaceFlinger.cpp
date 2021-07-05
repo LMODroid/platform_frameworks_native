@@ -700,8 +700,10 @@ void SurfaceFlinger::enableHalVirtualDisplays(bool enable) {
 
 std::optional<VirtualDisplayIdVariant> SurfaceFlinger::acquireVirtualDisplay(
         ui::Size resolution, ui::PixelFormat format, const std::string& uniqueId,
-        compositionengine::DisplayCreationArgsBuilder& builder) {
-    if (auto& generator = mVirtualDisplayIdGenerators.hal) {
+        compositionengine::DisplayCreationArgsBuilder& builder,
+        bool canAllocateHwcForVDS) {
+    auto& generator = mVirtualDisplayIdGenerators.hal;
+    if (canAllocateHwcForVDS && generator) {
         if (const auto halIdOpt = generateVirtualDisplayId(*generator)) {
             if (getHwComposer().allocateVirtualDisplay(*halIdOpt, resolution, &format) &&
                 acquireVirtualDisplaySnapshot(*halIdOpt, uniqueId)) {
@@ -4316,7 +4318,8 @@ void SurfaceFlinger::processDisplayAdded(const wp<IBinder>& displayToken,
                 getHwComposer().getMaxLayerPictureProfiles(physical->id));
     } else {
         virtualDisplayIdVariantOpt =
-                acquireVirtualDisplay(resolution, pixelFormat, state.uniqueId, builder);
+                acquireVirtualDisplay(resolution, pixelFormat, state.uniqueId, builder,
+                canAllocateHwcForVDS);
         LOG_ALWAYS_FATAL_IF(!virtualDisplayIdVariantOpt);
     }
 
