@@ -2459,6 +2459,13 @@ void EventHub::openDeviceLocked(const std::string& devicePath) {
     // Obtain the associated device, if any.
     device->associatedDevice = obtainAssociatedDeviceLocked(devicePath, device->configuration);
 
+    // Disable device if device config property set
+    if (device->configuration &&
+        device->configuration->getBool("device.disabled")) {
+        device->disable();
+        ALOGV("Disabling device with id %d\n", device->id);
+    }
+
     // Figure out the kinds of events the device reports.
     device->readDeviceBitMask(EVIOCGBIT(EV_KEY, 0), device->keyBitmask);
     device->readDeviceBitMask(EVIOCGBIT(EV_ABS, 0), device->absBitmask);
