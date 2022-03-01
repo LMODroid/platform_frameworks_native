@@ -2762,10 +2762,6 @@ void InputDispatcher::pokeUserActivityLocked(const EventEntry& eventEntry) {
     commandEntry->eventTime = eventEntry.eventTime;
     commandEntry->userActivityEventType = eventType;
     commandEntry->displayId = displayId;
-    if (eventType == USER_ACTIVITY_EVENT_BUTTON) {
-        const KeyEntry& keyEntry = static_cast<const KeyEntry&>(eventEntry);
-        commandEntry->keyEntryKeyCode = keyEntry.keyCode;
-    }
     postCommandLocked(std::move(commandEntry));
 }
 
@@ -6067,15 +6063,8 @@ bool InputDispatcher::afterMotionEventLockedInterruptible(const sp<Connection>& 
 void InputDispatcher::doPokeUserActivityLockedInterruptible(CommandEntry* commandEntry) {
     mLock.unlock();
 
-    int32_t keyCode = AKEYCODE_UNKNOWN;
-
-    if (commandEntry->userActivityEventType == USER_ACTIVITY_EVENT_BUTTON &&
-            commandEntry->keyEntryKeyCode) {
-        keyCode = commandEntry->keyEntryKeyCode;
-    }
-
     mPolicy->pokeUserActivity(commandEntry->eventTime, commandEntry->userActivityEventType,
-                              commandEntry->displayId, keyCode);
+                              commandEntry->displayId);
 
     mLock.lock();
 }
