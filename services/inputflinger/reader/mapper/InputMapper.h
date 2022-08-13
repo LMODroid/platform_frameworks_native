@@ -120,13 +120,13 @@ public:
     virtual std::optional<int32_t> getAssociatedDisplayId() { return std::nullopt; }
     virtual void updateLedState(bool reset) {}
 
+    virtual status_t getAbsoluteAxisInfo(int32_t axis, RawAbsoluteAxisInfo* axisInfo);
 protected:
     InputDeviceContext& mDeviceContext;
 
     explicit InputMapper(InputDeviceContext& deviceContext,
                          const InputReaderConfiguration& readerConfig);
 
-    status_t getAbsoluteAxisInfo(int32_t axis, RawAbsoluteAxisInfo* axisInfo);
     void bumpGeneration();
 
     static void dumpRawAbsoluteAxisInfo(std::string& dump, const RawAbsoluteAxisInfo& axis,
