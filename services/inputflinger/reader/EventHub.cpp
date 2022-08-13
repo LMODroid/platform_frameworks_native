@@ -329,6 +329,15 @@ Flags<InputDeviceClass> getAbsAxisUsage(int32_t axis, Flags<InputDeviceClass> de
         }
     }
 
+    // Absolute mouse support
+    if (deviceClasses.test(InputDeviceClass::CURSOR)) {
+        switch (axis) {
+            case ABS_X:
+            case ABS_Y:
+                return InputDeviceClass::CURSOR;
+        }
+    }
+
     if (deviceClasses.test(InputDeviceClass::SENSOR)) {
         switch (axis) {
             case ABS_X:
