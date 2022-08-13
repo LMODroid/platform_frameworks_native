@@ -45,6 +45,35 @@ private:
     void clearRelativeAxes();
 };
 
+/* Keeps track of the position an absolute mouse reports (ABS_X / ABS_Y). */
+class CursorPositionAccumulator {
+public:
+    void configure(InputDeviceContext& deviceContext);
+    void reset();
+
+    void process(const RawEvent& rawEvent);
+    void finishSync();
+
+    // Whether the device has reported a full position since the last reset.
+    inline bool hasPosition() const { return mHasX && mHasY && mSpanX > 0 && mSpanY > 0; }
+    // Whether the position changed in the current sync.
+    inline bool hasMoved() const { return mMoved; }
+    // Position across the axis range, from 0 to 1.
+    inline float getX() const { return float(mX - mMinX) / mSpanX; }
+    inline float getY() const { return float(mY - mMinY) / mSpanY; }
+
+private:
+    int32_t mMinX = 0;
+    int32_t mMinY = 0;
+    int32_t mSpanX = 0;
+    int32_t mSpanY = 0;
+    int32_t mX = 0;
+    int32_t mY = 0;
+    bool mHasX = false;
+    bool mHasY = false;
+    bool mMoved = false;
+};
+
 class CursorInputMapper : public InputMapper {
 public:
     template <class T, class... Args>
@@ -92,6 +121,7 @@ private:
 
     CursorButtonAccumulator mCursorButtonAccumulator;
     CursorMotionAccumulator mCursorMotionAccumulator;
+    CursorPositionAccumulator mCursorPositionAccumulator;
     CursorScrollAccumulator mCursorScrollAccumulator;
 
     int32_t mSource;

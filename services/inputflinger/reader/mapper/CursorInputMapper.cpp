@@ -94,6 +94,46 @@ void CursorMotionAccumulator::finishSync() {
     clearRelativeAxes();
 }
 
+// --- CursorPositionAccumulator ---
+
+void CursorPositionAccumulator::configure(InputDeviceContext& deviceContext) {
+    const std::optional<RawAbsoluteAxisInfo> x = deviceContext.getAbsoluteAxisInfo(ABS_X);
+    const std::optional<RawAbsoluteAxisInfo> y = deviceContext.getAbsoluteAxisInfo(ABS_Y);
+    mMinX = x ? x->minValue : 0;
+    mMinY = y ? y->minValue : 0;
+    mSpanX = x ? x->maxValue - x->minValue : 0;
+    mSpanY = y ? y->maxValue - y->minValue : 0;
+    reset();
+}
+
+void CursorPositionAccumulator::reset() {
+    mHasX = false;
+    mHasY = false;
+    mMoved = false;
+}
+
+void CursorPositionAccumulator::process(const RawEvent& rawEvent) {
+    if (rawEvent.type != EV_ABS) {
+        return;
+    }
+    switch (rawEvent.code) {
+        case ABS_X:
+            mMoved |= !mHasX || mX != rawEvent.value;
+            mX = rawEvent.value;
+            mHasX = true;
+            break;
+        case ABS_Y:
+            mMoved |= !mHasY || mY != rawEvent.value;
+            mY = rawEvent.value;
+            mHasY = true;
+            break;
+    }
+}
+
+void CursorPositionAccumulator::finishSync() {
+    mMoved = false;
+}
+
 // --- CursorInputMapper ---
 
 CursorInputMapper::CursorInputMapper(InputDeviceContext& deviceContext,
@@ -237,6 +277,7 @@ std::list<NotifyArgs> CursorInputMapper::reset(nsecs_t when) {
 
     mCursorButtonAccumulator.reset(getDeviceContext());
     mCursorMotionAccumulator.reset(getDeviceContext());
+    mCursorPositionAccumulator.reset();
     mCursorScrollAccumulator.reset(getDeviceContext());
 
     return InputMapper::reset(when);
@@ -246,6 +287,7 @@ std::list<NotifyArgs> CursorInputMapper::process(const RawEvent& rawEvent) {
     std::list<NotifyArgs> out;
     mCursorButtonAccumulator.process(rawEvent);
     mCursorMotionAccumulator.process(rawEvent);
+    mCursorPositionAccumulator.process(rawEvent);
     mCursorScrollAccumulator.process(rawEvent);
 
     if (rawEvent.type == EV_SYN && rawEvent.code == SYN_REPORT) {
@@ -316,12 +358,32 @@ std::list<NotifyArgs> CursorInputMapper::sync(nsecs_t when, nsecs_t readTime) {
     float xCursorPosition = AMOTION_EVENT_INVALID_CURSOR_POSITION;
     float yCursorPosition = AMOTION_EVENT_INVALID_CURSOR_POSITION;
 
+    // An absolute mouse (e.g. the virtual mouse of a remote desktop server) reports where the
+    // cursor is. Send that position and PointerChoreographer puts the pointer there, without
+    // acceleration. Not while the pointer is captured, when only relative motion is reported.
+    bool movedAbs = false;
+    if (mSource == AINPUT_SOURCE_MOUSE && mCursorPositionAccumulator.hasPosition()) {
+        xCursorPosition = mBoundsInLogicalDisplay.left +
+                mCursorPositionAccumulator.getX() *
+                        (mBoundsInLogicalDisplay.right - mBoundsInLogicalDisplay.left);
+        yCursorPosition = mBoundsInLogicalDisplay.top +
+                mCursorPositionAccumulator.getY() *
+                        (mBoundsInLogicalDisplay.bottom - mBoundsInLogicalDisplay.top);
+        movedAbs = mCursorPositionAccumulator.hasMoved();
+    }
+    const auto setAbsolutePosition = [&](PointerCoords& coords) {
+        if (MotionEvent::isValidCursorPosition(xCursorPosition, yCursorPosition)) {
+            coords.setAxisValue(AMOTION_EVENT_AXIS_X, xCursorPosition);
+            coords.setAxisValue(AMOTION_EVENT_AXIS_Y, yCursorPosition);
+        }
+    };
+
     // Moving an external trackball or mouse should wake the device.
     // We don't do this for internal cursor devices to prevent them from waking up
     // the device in your pocket.
     // TODO: Use the input device configuration to control this behavior more finely.
     uint32_t policyFlags = 0;
-    if ((buttonsPressed || moved || scrolled) && getDeviceContext().isExternal()) {
+    if ((buttonsPressed || moved || movedAbs || scrolled) && getDeviceContext().isExternal()) {
         policyFlags |= POLICY_FLAG_WAKE;
     }
 
@@ -330,7 +392,7 @@ std::list<NotifyArgs> CursorInputMapper::sync(nsecs_t when, nsecs_t readTime) {
     // TODO(b/407018146): we currently need to send a zero-delta HOVER_MOVE before scrolls so that
     //  InputDispatcher generates a HOVER_ENTER event if necessary. (The VirtualMouseTest in CTS
     //  depends on this.) Fix this issue then remove `|| scrolled` here.
-    if (moved || scrolled) {
+    if (moved || movedAbs || scrolled) {
         int32_t action = wasDown || mSource != AINPUT_SOURCE_MOUSE
                 ? AMOTION_EVENT_ACTION_MOVE
                 : AMOTION_EVENT_ACTION_HOVER_MOVE;
@@ -344,6 +406,7 @@ std::list<NotifyArgs> CursorInputMapper::sync(nsecs_t when, nsecs_t readTime) {
             moveCoords.setAxisValue(AMOTION_EVENT_AXIS_X, deltaX);
             moveCoords.setAxisValue(AMOTION_EVENT_AXIS_Y, deltaY);
         }
+        setAbsolutePosition(moveCoords);
 
         moveCoords.setAxisValue(AMOTION_EVENT_AXIS_PRESSURE, wasDown ? 1.0f : 0.0f);
 
@@ -367,6 +430,7 @@ std::list<NotifyArgs> CursorInputMapper::sync(nsecs_t when, nsecs_t readTime) {
         PointerCoords pointerCoords;
         pointerCoords.clear();
         pointerCoords.setAxisValue(AMOTION_EVENT_AXIS_PRESSURE, down ? 1.0f : 0.0f);
+        setAbsolutePosition(pointerCoords);
 
         if (buttonsReleased) {
             BitSet32 released(buttonsReleased);
@@ -443,6 +507,7 @@ std::list<NotifyArgs> CursorInputMapper::sync(nsecs_t when, nsecs_t readTime) {
                                 currentButtonState);
 
     mCursorMotionAccumulator.finishSync();
+    mCursorPositionAccumulator.finishSync();
     mCursorScrollAccumulator.finishSync();
     return out;
 }
@@ -461,6 +526,7 @@ std::optional<ui::LogicalDisplayId> CursorInputMapper::getAssociatedDisplayId() 
 
 void CursorInputMapper::configureBasicParams() {
     mCursorScrollAccumulator.configure(getDeviceContext());
+    mCursorPositionAccumulator.configure(getDeviceContext());
 
     // Configure basic parameters.
     mParameters = computeParameters(getDeviceContext());
