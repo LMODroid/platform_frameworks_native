@@ -2015,8 +2015,7 @@ InputEventInjectionResult InputDispatcher::findTouchedWindowTargetsLocked(
 
     bool isSplit = tempTouchState.split;
     bool switchedDevice = tempTouchState.deviceId >= 0 && tempTouchState.displayId >= 0 &&
-            (tempTouchState.deviceId != entry.deviceId || tempTouchState.source != entry.source ||
-             tempTouchState.displayId != displayId);
+            (tempTouchState.deviceId != entry.deviceId || tempTouchState.displayId != displayId);
 
     const bool isHoverAction = (maskedAction == AMOTION_EVENT_ACTION_HOVER_MOVE ||
                                 maskedAction == AMOTION_EVENT_ACTION_HOVER_ENTER ||
