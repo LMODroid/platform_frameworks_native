@@ -2090,8 +2090,9 @@ void EventHub::openDeviceLocked(const std::string& devicePath) {
     }
 
     // See if this is a cursor device such as a trackball or mouse.
-    if (device->keyBitmask.test(BTN_MOUSE) && device->relBitmask.test(REL_X) &&
-        device->relBitmask.test(REL_Y)) {
+    if (device->keyBitmask.test(BTN_MOUSE) && ((device->relBitmask.test(REL_X) &&
+        device->relBitmask.test(REL_Y)) || (device->absBitmask.test(ABS_X) &&
+        device->absBitmask.test(ABS_Y) && device->relBitmask.test(REL_WHEEL)))) {
         device->classes |= InputDeviceClass::CURSOR;
     }
 
@@ -2115,7 +2116,7 @@ void EventHub::openDeviceLocked(const std::string& devicePath) {
         }
         // Is this an old style single-touch driver?
     } else if (device->keyBitmask.test(BTN_TOUCH) && device->absBitmask.test(ABS_X) &&
-               device->absBitmask.test(ABS_Y)) {
+               device->absBitmask.test(ABS_Y) && !device->relBitmask.test(REL_WHEEL)) {
         device->classes |= InputDeviceClass::TOUCH;
         // Is this a BT stylus?
     } else if ((device->absBitmask.test(ABS_PRESSURE) || device->keyBitmask.test(BTN_TOUCH)) &&
