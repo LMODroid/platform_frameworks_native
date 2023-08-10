@@ -23,6 +23,9 @@
 #include <android/hardware/power/IPowerHintSession.h>
 #include <android/hardware/power/Mode.h>
 #include <powermanager/PowerHalWrapper.h>
+#include <google/hardware/power/extension/pixel/IPowerExt.h>
+
+using ::google::hardware::power::extension::pixel::IPowerExt;
 
 namespace android {
 
@@ -55,6 +58,8 @@ public:
 
     void init();
 
+    virtual HalResult<bool> isPowerExtAvailable() override;
+    virtual HalResult<void> setExtBoost(const ::std::string& boost, int32_t durationMs) override;
     virtual HalResult<void> setBoost(hardware::power::Boost boost, int32_t durationMs) override;
     virtual HalResult<void> setMode(hardware::power::Mode mode, bool enabled) override;
     virtual HalResult<sp<hardware::power::IPowerHintSession>> createHintSession(
