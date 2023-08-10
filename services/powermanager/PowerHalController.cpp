@@ -33,9 +33,15 @@ namespace power {
 // -------------------------------------------------------------------------------------------------
 
 std::unique_ptr<HalWrapper> HalConnector::connect() {
-    sp<IPower> halAidl = PowerHalLoader::loadAidl();
-    if (halAidl) {
-        return std::make_unique<AidlHalWrapper>(halAidl);
+    std::pair<sp<IPower>, sp<IPowerExt>> halAidlAndExt = PowerHalLoader::loadAidlAndExt();
+    sp<IPower> powerHal = halAidlAndExt.first;
+    sp<IPowerExt> powerExtHal = halAidlAndExt.second;
+    // Check validity of aidl power hal as well as the extension hal
+    if (powerHal && powerExtHal) {
+        return std::make_unique<AidlHalWrapper>(powerHal, powerExtHal);
+    }
+    if (powerHal) {
+        return std::make_unique<AidlHalWrapper>(powerHal);
     }
     sp<V1_0::IPower> halHidlV1_0 = PowerHalLoader::loadHidlV1_0();
     sp<V1_1::IPower> halHidlV1_1 = PowerHalLoader::loadHidlV1_1();
@@ -84,6 +90,18 @@ HalResult<T> PowerHalController::processHalResult(HalResult<T> result, const cha
         mHalConnector->reset();
     }
     return result;
+}
+
+HalResult<bool> PowerHalController::isPowerExtAvailable() {
+    std::shared_ptr<HalWrapper> handle = initHal();
+    auto result = handle->isPowerExtAvailable();
+    return processHalResult(result, "isPowerExtAvailable");
+}
+
+HalResult<void> PowerHalController::setExtBoost(const ::std::string& boost, int32_t durationMs) {
+    std::shared_ptr<HalWrapper> handle = initHal();
+    auto result = handle->setExtBoost(boost, durationMs);
+    return processHalResult(result, "setExtBoost");
 }
 
 HalResult<void> PowerHalController::setBoost(Boost boost, int32_t durationMs) {

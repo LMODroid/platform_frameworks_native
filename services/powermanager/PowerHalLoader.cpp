@@ -52,22 +52,34 @@ sp<T> loadHal(bool& exists, sp<T>& hal, F& loadFn, const char* halName) {
 // -------------------------------------------------------------------------------------------------
 
 std::mutex PowerHalLoader::gHalMutex;
+sp<IPowerExt> PowerHalLoader::gHalAidlExt = nullptr;
 sp<IPower> PowerHalLoader::gHalAidl = nullptr;
 sp<V1_0::IPower> PowerHalLoader::gHalHidlV1_0 = nullptr;
 sp<V1_1::IPower> PowerHalLoader::gHalHidlV1_1 = nullptr;
 
 void PowerHalLoader::unloadAll() {
     std::lock_guard<std::mutex> lock(gHalMutex);
+    gHalAidlExt = nullptr;
     gHalAidl = nullptr;
     gHalHidlV1_0 = nullptr;
     gHalHidlV1_1 = nullptr;
 }
 
-sp<IPower> PowerHalLoader::loadAidl() {
+std::pair<sp<IPower>, sp<IPowerExt>> PowerHalLoader::loadAidlAndExt() {
     std::lock_guard<std::mutex> lock(gHalMutex);
     static bool gHalExists = true;
     static auto loadFn = []() { return waitForVintfService<IPower>(); };
-    return loadHal<IPower>(gHalExists, gHalAidl, loadFn, "AIDL");
+
+    sp<IPower> pwBinder = loadHal<IPower>(gHalExists, gHalAidl, loadFn, "AIDL");
+    sp<IPowerExt> pwExtHal = nullptr;
+    if (gHalExists) {
+        sp<IBinder> pwExtBinder;
+        IPower::asBinder(pwBinder)->getExtension(&pwExtBinder);
+        gHalAidlExt = interface_cast<IPowerExt>(pwExtBinder);
+        pwExtHal = gHalAidlExt;
+    }
+
+    return std::make_pair(pwBinder, pwExtHal);
 }
 
 sp<V1_0::IPower> PowerHalLoader::loadHidlV1_0() {

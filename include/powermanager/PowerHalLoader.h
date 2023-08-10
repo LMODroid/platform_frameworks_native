@@ -20,6 +20,9 @@
 #include <android-base/thread_annotations.h>
 #include <android/hardware/power/1.1/IPower.h>
 #include <android/hardware/power/IPower.h>
+#include <google/hardware/power/extension/pixel/IPowerExt.h>
+
+using ::google::hardware::power::extension::pixel::IPowerExt;
 
 namespace android {
 
@@ -29,12 +32,13 @@ namespace power {
 class PowerHalLoader {
 public:
     static void unloadAll();
-    static sp<hardware::power::IPower> loadAidl();
+    static std::pair<sp<hardware::power::IPower>, sp<IPowerExt>> loadAidlAndExt();
     static sp<hardware::power::V1_0::IPower> loadHidlV1_0();
     static sp<hardware::power::V1_1::IPower> loadHidlV1_1();
 
 private:
     static std::mutex gHalMutex;
+    static sp<IPowerExt> gHalAidlExt GUARDED_BY(gHalMutex);
     static sp<hardware::power::IPower> gHalAidl GUARDED_BY(gHalMutex);
     static sp<hardware::power::V1_0::IPower> gHalHidlV1_0 GUARDED_BY(gHalMutex);
     static sp<hardware::power::V1_1::IPower> gHalHidlV1_1 GUARDED_BY(gHalMutex);

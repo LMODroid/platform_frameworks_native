@@ -23,6 +23,9 @@
 #include <android/hardware/power/IPower.h>
 #include <android/hardware/power/IPowerHintSession.h>
 #include <android/hardware/power/Mode.h>
+#include <google/hardware/power/extension/pixel/IPowerExt.h>
+
+using ::google::hardware::power::extension::pixel::IPowerExt;
 
 namespace android {
 
@@ -117,6 +120,8 @@ class HalWrapper {
 public:
     virtual ~HalWrapper() = default;
 
+    virtual HalResult<bool> isPowerExtAvailable() = 0;
+    virtual HalResult<void> setExtBoost(const ::std::string& boost, int32_t durationMs) = 0;
     virtual HalResult<void> setBoost(hardware::power::Boost boost, int32_t durationMs) = 0;
     virtual HalResult<void> setMode(hardware::power::Mode mode, bool enabled) = 0;
     virtual HalResult<sp<hardware::power::IPowerHintSession>> createHintSession(
@@ -131,6 +136,8 @@ public:
     EmptyHalWrapper() = default;
     ~EmptyHalWrapper() = default;
 
+    virtual HalResult<bool> isPowerExtAvailable() override;
+    virtual HalResult<void> setExtBoost(const ::std::string& boost, int32_t durationMs) override;
     virtual HalResult<void> setBoost(hardware::power::Boost boost, int32_t durationMs) override;
     virtual HalResult<void> setMode(hardware::power::Mode mode, bool enabled) override;
     virtual HalResult<sp<hardware::power::IPowerHintSession>> createHintSession(
@@ -146,6 +153,8 @@ public:
           : mHandleV1_0(std::move(Hal)) {}
     virtual ~HidlHalWrapperV1_0() = default;
 
+    virtual HalResult<bool> isPowerExtAvailable() override;
+    virtual HalResult<void> setExtBoost(const ::std::string& boost, int32_t durationMs) override;
     virtual HalResult<void> setBoost(hardware::power::Boost boost, int32_t durationMs) override;
     virtual HalResult<void> setMode(hardware::power::Mode mode, bool enabled) override;
     virtual HalResult<sp<hardware::power::IPowerHintSession>> createHintSession(
@@ -182,8 +191,12 @@ private:
 class AidlHalWrapper : public HalWrapper {
 public:
     explicit AidlHalWrapper(sp<hardware::power::IPower> handle) : mHandle(std::move(handle)) {}
+    explicit AidlHalWrapper(sp<hardware::power::IPower> handle, sp<IPowerExt> handleExt)
+        : mHandle(std::move(handle)), mHandleExt(std::move(handleExt)) {}
     virtual ~AidlHalWrapper() = default;
 
+    virtual HalResult<bool> isPowerExtAvailable() override;
+    virtual HalResult<void> setExtBoost(const ::std::string& boost, int32_t durationMs) override;
     virtual HalResult<void> setBoost(hardware::power::Boost boost, int32_t durationMs) override;
     virtual HalResult<void> setMode(hardware::power::Mode mode, bool enabled) override;
     virtual HalResult<sp<hardware::power::IPowerHintSession>> createHintSession(
@@ -196,6 +209,7 @@ private:
     std::mutex mBoostMutex;
     std::mutex mModeMutex;
     sp<hardware::power::IPower> mHandle;
+    sp<IPowerExt> mHandleExt;
     // Android framework only sends boost upto DISPLAY_UPDATE_IMMINENT.
     // Need to increase the array size if more boost supported.
     std::array<std::atomic<HalSupport>,
