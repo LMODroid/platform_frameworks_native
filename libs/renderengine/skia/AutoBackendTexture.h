@@ -96,8 +96,9 @@ public:
         // As SkImages are immutable but buffer content is not, we create
         // a new SkImage every time.
         sk_sp<SkImage> makeImage(ui::Dataspace dataspace, SkAlphaType alphaType,
-                                 ftl::Flags<ColorSpaceOptions> options = ColorSpaceOptions::None) {
-            return mTexture->makeImage(dataspace, alphaType, options);
+                                 ftl::Flags<ColorSpaceOptions> options = ColorSpaceOptions::None,
+                                 bool skipUpdate = false) {
+            return mTexture->makeImage(dataspace, alphaType, options, skipUpdate);
         }
 
         // Makes a new SkSurface from the texture content, if needed.
@@ -136,7 +137,8 @@ private:
     // As SkImages are immutable but buffer content is not, we create
     // a new SkImage every time.
     sk_sp<SkImage> makeImage(ui::Dataspace dataspace, SkAlphaType alphaType,
-                             ftl::Flags<ColorSpaceOptions> options = ColorSpaceOptions::None);
+                             ftl::Flags<ColorSpaceOptions> options = ColorSpaceOptions::None,
+                             bool skipUpdate = false);
 
     // Makes a new SkSurface from the texture content, if needed.
     sk_sp<SkSurface> getOrCreateSurface(

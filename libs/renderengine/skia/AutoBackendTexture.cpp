@@ -61,7 +61,7 @@ void AutoBackendTexture::releaseImageProc(SkImages::ReleaseContext releaseContex
 }
 
 sk_sp<SkImage> AutoBackendTexture::makeImage(ui::Dataspace dataspace, SkAlphaType alphaType,
-                                             ftl::Flags<ColorSpaceOptions> options) {
+                                             ftl::Flags<ColorSpaceOptions> options, bool skipUpdate) {
     SFTRACE_CALL();
 
     sk_sp<SkImage> image =

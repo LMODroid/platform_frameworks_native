@@ -51,6 +51,10 @@
 #include "filters/RuntimeEffectManager.h"
 #include "filters/StretchShaderFactory.h"
 
+#ifdef MTK_SKIP_SKIA_EXTERNAL_TEXTURE_CACHE
+#include "gralloc_extra.h"
+#endif
+
 class SkData;
 
 struct SkPoint3;
@@ -118,6 +122,8 @@ protected:
     bool isProtected() const { return mInProtectedContext; }
 
     void rdocCaptureNextFrame() override { mRenderDocCaptureNextFrame = true; }
+    
+    virtual renderengine::RenderEngine::GraphicsApi graphicsApi() = 0;
 
     // Implements PersistentCache as a way to monitor what SkSL shaders Skia has
     // cached.
@@ -184,6 +190,10 @@ private:
 
     std::shared_ptr<AutoBackendTexture::LocalRef> getOrCreateBackendTexture(
             const sp<GraphicBuffer>& buffer, bool isOutputBuffer) REQUIRES(mRenderingMutex);
+#ifdef MTK_SKIP_SKIA_EXTERNAL_TEXTURE_CACHE
+    std::shared_ptr<AutoBackendTexture::LocalRef> getOrCreateBackendTexture(
+            const sp<GraphicBuffer>& buffer, bool isOutputBuffer, bool *skipUpdate) REQUIRES(mRenderingMutex);
+#endif
     void initCanvas(SkCanvas* canvas, const DisplaySettings& display);
     void drawShadow(SkCanvas* canvas, const SkRRect& casterRRect,
                     const ShadowSettings& shadowSettings);
@@ -203,6 +213,12 @@ private:
     void dump(std::string& result) override final;
 
     CacheManagementPolicy activeContextCachePolicy() const;
+
+#ifdef MTK_SKIP_SKIA_EXTERNAL_TEXTURE_CACHE
+    void *gralloc_extra_handle;
+    gralloc_extra_query_handle gralloc_extra_query;
+#endif
+    bool shouldSkipExternalTextureCache(const sp<GraphicBuffer>& buffer);
 
     // If requiresLinearEffect is true or the layer has a stretchEffect a new shader is returned.
     // Otherwise it returns the input shader.
