@@ -29,6 +29,7 @@ cc_defaults {
         "librenderengine_deps",
         "surfaceflinger_defaults",
         "surfaceflinger_qcom_ext_defaults",
+        "surfaceflinger_mtk_ext_defaults",
     ],
     cflags: [
         "-DLOG_TAG=\"SurfaceFlinger\"",

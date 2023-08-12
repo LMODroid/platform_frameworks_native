@@ -24,6 +24,7 @@ cc_defaults {
     defaults: [
         "android.hardware.graphics.composer3-ndk_shared",
         "renderengine_defaults",
+        "surfaceflinger_mtk_ext_defaults",
     ],
     cflags: [
         "-DGL_GLEXT_PROTOTYPES",

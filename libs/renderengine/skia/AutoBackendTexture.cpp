@@ -121,10 +121,10 @@ void logFatalTexture(const char* msg, const GrBackendTexture& tex, ui::Dataspace
 }
 
 sk_sp<SkImage> AutoBackendTexture::makeImage(ui::Dataspace dataspace, SkAlphaType alphaType,
-                                             GrDirectContext* context) {
+                                             GrDirectContext* context, bool skipUpdate = false) {
     ATRACE_CALL();
 
-    if (mBackendTexture.isValid()) {
+    if (mBackendTexture.isValid() && !skipUpdate) {
         mUpdateProc(mImageCtx, context);
     }
 
