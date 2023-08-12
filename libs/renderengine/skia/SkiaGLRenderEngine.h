@@ -66,6 +66,8 @@ protected:
     base::unique_fd flushAndSubmit(SkiaGpuContext* context, sk_sp<SkSurface> dstSurface) override;
     void appendBackendSpecificInfoToDump(std::string& result) override;
 
+    renderengine::RenderEngine::GraphicsApi graphicsApi() override;
+
 private:
     SkiaGLRenderEngine(const RenderEngineCreationArgs& args, EGLDisplay display, EGLContext ctxt,
                        EGLSurface placeholder, EGLContext protectedContext,

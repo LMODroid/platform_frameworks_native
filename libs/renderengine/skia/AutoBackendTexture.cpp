@@ -62,7 +62,7 @@ void AutoBackendTexture::releaseImageProc(SkImages::ReleaseContext releaseContex
     textureRelease->unref(false);
 }
 
-sk_sp<SkImage> AutoBackendTexture::makeImage(ui::Dataspace dataspace, SkAlphaType alphaType) {
+sk_sp<SkImage> AutoBackendTexture::makeImage(ui::Dataspace dataspace, SkAlphaType alphaType, bool skipUpdate = false) {
     SFTRACE_CALL();
 
     sk_sp<SkImage> image = mBackendTexture->makeImage(alphaType, dataspace, releaseImageProc, this);
