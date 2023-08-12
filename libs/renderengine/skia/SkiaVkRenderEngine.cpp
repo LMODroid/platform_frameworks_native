@@ -177,6 +177,10 @@ void SkiaVkRenderEngine::appendBackendSpecificInfoToDump(std::string& result) {
     }
 }
 
+renderengine::RenderEngine::GraphicsApi SkiaVkRenderEngine::graphicsApi() {
+    return renderengine::RenderEngine::GraphicsApi::Vk;
+}
+
 } // namespace skia
 } // namespace renderengine
 } // namespace android
