@@ -804,8 +804,13 @@ void chooseRenderEngineType(renderengine::RenderEngineCreationArgs::Builder& bui
     // TODO: b/293371537 - Once GraphiteVk is deemed relatively stable, log a warning that
     // PROPERTY_DEBUG_RENDERENGINE_BACKEND is deprecated
     if (strcmp(prop, "skiagl") == 0) {
+#ifndef MTK_SKIP_SKIA_EXTERNAL_TEXTURE_CACHE
         builder.setThreaded(renderengine::RenderEngine::Threaded::NO)
                 .setGraphicsApi(renderengine::RenderEngine::GraphicsApi::GL);
+#else
+        builder.setThreaded(renderengine::RenderEngine::Threaded::YES)
+                .setGraphicsApi(renderengine::RenderEngine::GraphicsApi::GL);
+#endif
     } else if (strcmp(prop, "skiaglthreaded") == 0) {
         builder.setThreaded(renderengine::RenderEngine::Threaded::YES)
                 .setGraphicsApi(renderengine::RenderEngine::GraphicsApi::GL);
