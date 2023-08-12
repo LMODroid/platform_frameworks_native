@@ -98,6 +98,12 @@ HalResult<bool> PowerHalController::isPowerExtAvailable() {
     return processHalResult(result, "isPowerExtAvailable");
 }
 
+HalResult<bool> PowerHalController::isExtBoostSupported(const ::std::string& boost) {
+    std::shared_ptr<HalWrapper> handle = initHal();
+    auto result = handle->isExtBoostSupported(boost);
+    return processHalResult(result, "isPowerExtAvailable");
+}
+
 HalResult<void> PowerHalController::setExtBoost(const ::std::string& boost, int32_t durationMs) {
     std::shared_ptr<HalWrapper> handle = initHal();
     auto result = handle->setExtBoost(boost, durationMs);

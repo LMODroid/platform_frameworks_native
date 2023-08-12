@@ -39,7 +39,10 @@ cc_library_shared {
         "android.hardware.power@1.0",
         "android.hardware.power@1.1",
         "android.hardware.power-V3-cpp",
-        "pixel-power-ext-V1-cpp"
+    ], 
+
+    static_libs: [
+        "//hardware/google/interfaces:pixel-power-ext-V1-cpp"
     ],
 
     cflags: [
