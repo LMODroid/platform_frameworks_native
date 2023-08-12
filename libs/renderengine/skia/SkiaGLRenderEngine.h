@@ -41,6 +41,10 @@
 #include "filters/LinearEffect.h"
 #include "filters/StretchShaderFactory.h"
 
+#ifdef MTK_SKIP_SKIA_EXTERNAL_TEXTURE_CACHE
+#include "gralloc_extra.h"
+#endif
+
 namespace android {
 namespace renderengine {
 namespace skia {
@@ -78,6 +82,11 @@ protected:
                             const bool useFramebufferCache, base::unique_fd&& bufferFence) override;
 
 private:
+#ifdef MTK_SKIP_SKIA_EXTERNAL_TEXTURE_CACHE
+    void *gralloc_extra_handle;
+    gralloc_extra_query_handle gralloc_extra_query;
+#endif
+    bool shouldSkipExternalTextureCache(const sp<GraphicBuffer>& buffer);
     static EGLConfig chooseEglConfig(EGLDisplay display, int format, bool logConfig);
     static EGLContext createEglContext(EGLDisplay display, EGLConfig config,
                                        EGLContext shareContext,

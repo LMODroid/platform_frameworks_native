@@ -46,6 +46,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <dlfcn.h>
 #include <memory>
 #include <numeric>
 
@@ -331,6 +332,16 @@ SkiaGLRenderEngine::SkiaGLRenderEngine(const RenderEngineCreationArgs& args, EGL
         mBlurFilter = new KawaseBlurFilter();
     }
     mCapture = std::make_unique<SkiaCapture>();
+
+#ifdef MTK_SKIP_SKIA_EXTERNAL_TEXTURE_CACHE
+    gralloc_extra_handle = dlopen("libgralloc_extra_sys.so", RTLD_LAZY);
+    if (!gralloc_extra_handle)
+        LOG_ALWAYS_FATAL("Could not dlopen libgralloc_extra_sys.so");
+    gralloc_extra_query =
+        reinterpret_cast<gralloc_extra_query_handle>(dlsym(gralloc_extra_handle, "gralloc_extra_query"));
+    if (!gralloc_extra_query)
+        LOG_ALWAYS_FATAL("Could not locate symbol gralloc_extra_query");
+#endif
 }
 
 SkiaGLRenderEngine::~SkiaGLRenderEngine() {
@@ -512,6 +523,32 @@ static bool needsToneMapping(ui::Dataspace sourceDataspace, ui::Dataspace destin
             sourceTransfer != destTransfer;
 }
 
+bool SkiaGLRenderEngine::shouldSkipExternalTextureCache(const sp<GraphicBuffer>& buffer){
+#ifdef MTK_SKIP_SKIA_EXTERNAL_TEXTURE_CACHE
+    GRALLOC_EXTRA_RESULT result = GRALLOC_EXTRA_OK;
+    int ion_fd = -1;
+    int status = 0;
+    bool videoPqEnable = false;
+    bool isUnknownFormat = false;
+    result = gralloc_extra_query(buffer->handle, GRALLOC_EXTRA_GET_ION_FD, &ion_fd);
+    if ((GRALLOC_EXTRA_OK == result) && (-1 != ion_fd)) {
+        ge_sf_info_t sf_info;
+        result = gralloc_extra_query(buffer->handle, GRALLOC_EXTRA_GET_SF_INFO, &sf_info);
+        if (GRALLOC_EXTRA_OK == result) {
+            status = sf_info.status2;
+        }
+    }
+    videoPqEnable = (status & GRALLOC_EXTRA_MASK2_VIDEO_PQ) == GRALLOC_EXTRA_BIT2_VIDEO_PQ_ON;
+    if (decodePixelFormat(buffer->getPixelFormat()).find("Unknown") != std::string::npos) {
+        isUnknownFormat = true;
+    }
+    if (isUnknownFormat || videoPqEnable) {
+        return true;
+    }
+#endif
+    return false;
+}
+
 void SkiaGLRenderEngine::mapExternalTextureBuffer(const sp<GraphicBuffer>& buffer,
                                                   bool isRenderable) {
     // Only run this if RE is running on its own thread. This way the access to GL
@@ -523,6 +560,9 @@ void SkiaGLRenderEngine::mapExternalTextureBuffer(const sp<GraphicBuffer>& buffe
     // because GPU resources for protected buffers is much more limited.
     const bool isProtectedBuffer = buffer->getUsage() & GRALLOC_USAGE_PROTECTED;
     if (isProtectedBuffer) {
+        return;
+    }
+    if (shouldSkipExternalTextureCache(buffer)) {
         return;
     }
     ATRACE_CALL();
@@ -1035,6 +1075,8 @@ void SkiaGLRenderEngine::drawLayersInternal(
             const auto& item = layer.source.buffer;
             std::shared_ptr<AutoBackendTexture::LocalRef> imageTextureRef = nullptr;
 
+            bool skipUpdate = false;
+
             if (const auto& iter = cache.find(item.buffer->getBuffer()->getId());
                 iter != cache.end()) {
                 imageTextureRef = iter->second;
@@ -1047,6 +1089,17 @@ void SkiaGLRenderEngine::drawLayersInternal(
                         AutoBackendTexture::LocalRef>(grContext,
                                                       item.buffer->getBuffer()->toAHardwareBuffer(),
                                                       false, mTextureCleanupMgr);
+#ifdef MTK_SKIP_SKIA_EXTERNAL_TEXTURE_CACHE
+                skipUpdate = true;
+                if (shouldSkipExternalTextureCache(item.buffer->getBuffer())) {
+                    const bool isProtectedBuffer =
+                            item.buffer->getBuffer()->getUsage() & GRALLOC_USAGE_PROTECTED;
+                    if (!isProtectedBuffer) {
+                        mGraphicBufferExternalRefs[item.buffer->getBuffer()->getId()]++;
+                        cache.insert({item.buffer->getBuffer()->getId(), imageTextureRef});
+                    }
+                }
+#endif
             }
 
             // if the layer's buffer has a fence, then we must must respect the fence prior to using
@@ -1076,7 +1129,7 @@ void SkiaGLRenderEngine::drawLayersInternal(
                     : item.isOpaque                      ? kOpaque_SkAlphaType
                     : item.usePremultipliedAlpha         ? kPremul_SkAlphaType
                                                          : kUnpremul_SkAlphaType;
-            sk_sp<SkImage> image = imageTextureRef->makeImage(layerDataspace, alphaType, grContext);
+            sk_sp<SkImage> image = imageTextureRef->makeImage(layerDataspace, alphaType, grContext, skipUpdate);
 
             auto texMatrix = getSkM44(item.textureTransform).asM33();
             // textureTansform was intended to be passed directly into a shader, so when

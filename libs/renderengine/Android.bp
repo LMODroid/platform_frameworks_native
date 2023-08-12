@@ -21,7 +21,10 @@ cc_defaults {
 
 cc_defaults {
     name: "librenderengine_defaults",
-    defaults: ["renderengine_defaults"],
+    defaults: [
+        "renderengine_defaults",
+        "surfaceflinger_mtk_ext_defaults",
+    ],
     cflags: [
         "-DGL_GLEXT_PROTOTYPES",
         "-DEGL_EGLEXT_PROTOTYPES",

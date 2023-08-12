@@ -764,7 +764,11 @@ chooseRenderEngineTypeViaSysProp() {
     } else if (strcmp(prop, "threaded") == 0) {
         return renderengine::RenderEngine::RenderEngineType::THREADED;
     } else if (strcmp(prop, "skiagl") == 0) {
+#ifndef MTK_SKIP_SKIA_EXTERNAL_TEXTURE_CACHE
         return renderengine::RenderEngine::RenderEngineType::SKIA_GL;
+#else
+        return renderengine::RenderEngine::RenderEngineType::SKIA_GL_THREADED;
+#endif
     } else if (strcmp(prop, "skiaglthreaded") == 0) {
         return renderengine::RenderEngine::RenderEngineType::SKIA_GL_THREADED;
     } else {

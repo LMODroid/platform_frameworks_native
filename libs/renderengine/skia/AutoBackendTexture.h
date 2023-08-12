@@ -96,8 +96,8 @@ public:
         // As SkImages are immutable but buffer content is not, we create
         // a new SkImage every time.
         sk_sp<SkImage> makeImage(ui::Dataspace dataspace, SkAlphaType alphaType,
-                                 GrDirectContext* context) {
-            return mTexture->makeImage(dataspace, alphaType, context);
+                                 GrDirectContext* context, bool skipUpdate) {
+            return mTexture->makeImage(dataspace, alphaType, context, skipUpdate);
         }
 
         // Makes a new SkSurface from the texture content, if needed.
@@ -131,7 +131,7 @@ private:
     // As SkImages are immutable but buffer content is not, we create
     // a new SkImage every time.
     sk_sp<SkImage> makeImage(ui::Dataspace dataspace, SkAlphaType alphaType,
-                             GrDirectContext* context);
+                             GrDirectContext* context, bool skipUpdate);
 
     // Makes a new SkSurface from the texture content, if needed.
     sk_sp<SkSurface> getOrCreateSurface(ui::Dataspace dataspace, GrDirectContext* context);
