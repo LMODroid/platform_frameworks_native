@@ -59,7 +59,9 @@ public:
     void init();
 
     virtual HalResult<bool> isPowerExtAvailable() override;
+    virtual HalResult<bool> isExtModeSupported(const ::std::string& mode) override;
     virtual HalResult<bool> isExtBoostSupported(const ::std::string& boost) override;
+    virtual HalResult<void> setExtMode(const ::std::string& mode, bool enabled) override;
     virtual HalResult<void> setExtBoost(const ::std::string& boost, int32_t durationMs) override;
     virtual HalResult<void> setBoost(hardware::power::Boost boost, int32_t durationMs) override;
     virtual HalResult<void> setMode(hardware::power::Mode mode, bool enabled) override;
