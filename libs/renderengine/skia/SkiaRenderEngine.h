@@ -63,23 +63,17 @@ class BlurFilter;
 class SkiaRenderEngine : public RenderEngine {
 public:
     static std::unique_ptr<SkiaRenderEngine> create(const RenderEngineCreationArgs& args);
-    SkiaRenderEngine(RenderEngineType type,
-                     PixelFormat pixelFormat,
-                     bool useColorManagement,
-                     bool supportsBackgroundBlur);
+    SkiaRenderEngine(RenderEngineType type, PixelFormat pixelFormat, bool supportsBackgroundBlur);
     ~SkiaRenderEngine() override;
 
-    std::future<void> primeCache() override final;
+    std::future<void> primeCache(bool shouldPrimeUltraHDR) override final;
     void cleanupPostRender() override final;
-    void cleanFramebufferCache() override final{ }
     bool supportsBackgroundBlur() override final {
         return mBlurFilter != nullptr;
     }
     void onActiveDisplaySizeChanged(ui::Size size) override final;
     int reportShadersCompiled();
 
-    virtual void genTextures(size_t /*count*/, uint32_t* /*names*/) override final{};
-    virtual void deleteTextures(size_t /*count*/, uint32_t const* /*names*/) override final{};
     virtual void setEnableTracing(bool tracingEnabled) override final;
 
     void useProtectedContext(bool useProtectedContext) override;
@@ -150,7 +144,6 @@ private:
                             const DisplaySettings& display,
                             const std::vector<LayerSettings>& layers,
                             const std::shared_ptr<ExternalTexture>& buffer,
-                            const bool useFramebufferCache,
                             base::unique_fd&& bufferFence) override final;
 
     void dump(std::string& result) override final;
@@ -176,7 +169,6 @@ private:
     sk_sp<SkShader> createRuntimeEffectShader(const RuntimeEffectShaderParameters&);
 
     const PixelFormat mDefaultPixelFormat;
-    const bool mUseColorManagement;
 
     // Identifier used for various mappings of layers to various
     // textures or shaders
