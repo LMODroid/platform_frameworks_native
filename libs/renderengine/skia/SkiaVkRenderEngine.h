@@ -42,6 +42,8 @@ protected:
     base::unique_fd flushAndSubmit(GrDirectContext* context) override;
     void appendBackendSpecificInfoToDump(std::string& result) override;
 
+    renderengine::RenderEngine::GraphicsApi graphicsApi() override;
+
 private:
     SkiaVkRenderEngine(const RenderEngineCreationArgs& args);
     base::unique_fd flush();

@@ -546,6 +546,10 @@ void SkiaGLRenderEngine::appendBackendSpecificInfoToDump(std::string& result) {
     StringAppendF(&result, "%s\n", extensions.getExtensions());
 }
 
+renderengine::RenderEngine::GraphicsApi SkiaGLRenderEngine::graphicsApi() {
+    return renderengine::RenderEngine::GraphicsApi::GL;
+}
+
 } // namespace skia
 } // namespace renderengine
 } // namespace android

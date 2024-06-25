@@ -539,8 +539,8 @@ std::shared_ptr<AutoBackendTexture::LocalRef> SkiaRenderEngine::getOrCreateBacke
     if (shouldSkipExternalTextureCache(buffer)) {
         *skipUpdate = true;
         const bool isProtectedBuffer = buffer->getUsage() & GRALLOC_USAGE_PROTECTED;
-        if (isProtectedBuffer ||
-                (mRenderEngineType == RenderEngineType::SKIA_VK_THREADED && isProtected())) {
+        if (isProtectedBuffer || (isThreaded() &&
+                graphicsApi() == renderengine::RenderEngine::GraphicsApi::VK && isProtected())) {
           // follow  AOSP flow, follow rule of mapExternalTextureBuffer
         } else {
             auto& cache = mTextureCache;

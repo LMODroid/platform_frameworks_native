@@ -101,6 +101,8 @@ protected:
 
     bool isProtected() const { return mInProtectedContext; }
 
+    virtual renderengine::RenderEngine::GraphicsApi graphicsApi() = 0;
+
     // Implements PersistentCache as a way to monitor what SkSL shaders Skia has
     // cached.
     class SkSLCacheMonitor : public GrContextOptions::PersistentCache {
