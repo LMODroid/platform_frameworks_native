@@ -173,4 +173,13 @@ enum InputConfig {
      * remain unchanged and coordinate space will extend beyond the logical display space.
      */
      DISPLAY_TOPOLOGY_AWARE       = 1 << 19,
+
+    /**
+     * InputConfig used to indicate that any pointer streams targeting this window should not be
+     * canceled as part of a pilferPointers request.
+     *
+     * This is only meant to be used by system components that need to be perpetually be aware of
+     * all input streams, such as the PointerLocationView used for debugging.
+     */
+     DO_NOT_PILFER                = 1 << 20,
 }

@@ -699,6 +699,24 @@ TEST_F(InputDispatcherDeathTest, DuplicateWindowInfosAbortDispatcher) {
                  "Incorrect WindowInfosUpdate provided");
 }
 
+/**
+ * InputDispatcher aborts when a window with DO_NOT_PILFER is not a trusted overlay.
+ */
+TEST_F(InputDispatcherDeathTest, DoNotPilferFlagRequiresTrustedOverlay) {
+    testing::GTEST_FLAG(death_test_style) = "threadsafe";
+    ScopedSilentDeath _silentDeath;
+
+    std::shared_ptr<FakeApplicationHandle> application = std::make_shared<FakeApplicationHandle>();
+    sp<FakeWindowHandle> window =
+            sp<FakeWindowHandle>::make(application, mDispatcher, "Fake Window",
+                                       ui::LogicalDisplayId::DEFAULT);
+    window->setDoNotPilfer(true);
+    window->setTrustedOverlay(true);
+    ASSERT_DEATH(mDispatcher->onWindowInfosChanged(
+                         {{*window->getInfo(), *window->getInfo()}, {}, 0, 0}),
+                 "Incorrect WindowInfosUpdate provided");
+}
+
 TEST_F(InputDispatcherTest, WhenDisplayNotSpecified_InjectMotionToDefaultDisplay) {
     std::shared_ptr<FakeApplicationHandle> application = std::make_shared<FakeApplicationHandle>();
     sp<FakeWindowHandle> window =
@@ -12712,6 +12730,10 @@ protected:
         mWindowOnSecondDisplay->setFrame({0, 0, 100, 100});
 
         mDispatcher->setFocusedApplication(ui::LogicalDisplayId::DEFAULT, mApp);
+        updateWindowInfos();
+    }
+
+    void updateWindowInfos() {
         mDispatcher->onWindowInfosChanged(
                 {{*mSpyWindow->getInfo(), *mWindow->getInfo(), *mSecondWindow->getInfo(),
                   *mWindowOnSecondDisplay->getInfo()},
@@ -12986,6 +13008,54 @@ TEST_F(InputDispatcherDragTests, DragAndDropNotCancelledIfSomeOtherPointerIsPilf
     mDragWindow->consumeMotionEvent(
             AllOf(WithMotionAction(ACTION_MOVE), WithFlags(AMOTION_EVENT_FLAG_NO_FOCUS_CHANGE)));
     mDragWindow->assertNoEvents();
+}
+
+TEST_F(InputDispatcherDragTests, DragAndDropWithDoNotPilferSpy) {
+    // Configure the spy to have the DO_NOT_PILFER flag.
+    mSpyWindow->setDoNotPilfer(true);
+    updateWindowInfos();
+
+    startDrag();
+
+    // No cancel event after drag start
+    mSpyWindow->assertNoEvents();
+
+    const MotionEvent secondFingerDownEvent =
+            MotionEventBuilder(POINTER_1_DOWN, AINPUT_SOURCE_TOUCHSCREEN)
+                    .eventTime(systemTime(SYSTEM_TIME_MONOTONIC))
+                    .pointer(PointerBuilder(/*id=*/0, ToolType::FINGER).x(50).y(50))
+                    .pointer(PointerBuilder(/*id=*/1, ToolType::FINGER).x(60).y(60))
+                    .build();
+    ASSERT_EQ(InputEventInjectionResult::SUCCEEDED,
+              injectMotionEvent(*mDispatcher, secondFingerDownEvent, INJECT_EVENT_TIMEOUT,
+                                InputEventInjectionSync::WAIT_FOR_RESULT))
+            << "Inject motion event should return InputEventInjectionResult::SUCCEEDED";
+
+    // Since the spy window sets the DO_NOT_PILFER flag, the drag pointer does
+    // not get canceled for the spy window.
+    mSpyWindow->consumeMotionEvent(AllOf(WithMotionAction(POINTER_1_DOWN), WithPointerIds({0, 1})));
+    mDragWindow->consumeMotionEvent(WithMotionAction(ACTION_MOVE));
+
+    mSpyWindow->assertNoEvents();
+
+    const MotionEvent firstFingerMoveEvent =
+            MotionEventBuilder(ACTION_MOVE, AINPUT_SOURCE_TOUCHSCREEN)
+                    .eventTime(systemTime(SYSTEM_TIME_MONOTONIC))
+                    .pointer(PointerBuilder(/*id=*/0, ToolType::FINGER).x(60).y(60))
+                    .pointer(PointerBuilder(/*id=*/1, ToolType::FINGER).x(60).y(60))
+                    .build();
+    ASSERT_EQ(InputEventInjectionResult::SUCCEEDED,
+              injectMotionEvent(*mDispatcher, firstFingerMoveEvent, INJECT_EVENT_TIMEOUT,
+                                InputEventInjectionSync::WAIT_FOR_RESULT))
+            << "Inject motion event should return InputEventInjectionResult::SUCCEEDED";
+
+    // Drag window should not receive the new event
+    mDragWindow->consumeMotionEvent(
+            AllOf(WithMotionAction(ACTION_MOVE), WithFlags(MotionFlag::NO_FOCUS_CHANGE)));
+    mDragWindow->assertNoEvents();
+    // And the spy window should still receive both pointers
+    mSpyWindow->consumeMotionEvent(AllOf(WithMotionAction(ACTION_MOVE), WithPointerIds({0, 1})));
+    mSpyWindow->assertNoEvents();
 }
 
 TEST_F(InputDispatcherDragTests, StylusDragAndDrop) {
@@ -14483,6 +14553,46 @@ TEST_F(InputDispatcherPilferPointersTest, NoPilferingWithHoveringPointers) {
     EXPECT_NE(OK, mDispatcher->pilferPointers(spy->getToken()));
     spy->assertNoEvents();
     window->assertNoEvents();
+}
+
+TEST_F(InputDispatcherPilferPointersTest, DoNotPilfer) {
+    // The foreground window and spy3 have DO_NOT_PILFER set.
+    auto window = createForeground();
+    window->setDoNotPilfer(true);
+    window->setTrustedOverlay(true);
+    auto spy1 = createSpy();
+    auto spy2 = createSpy();
+    auto spy3 = createSpy();
+    spy3->setDoNotPilfer(true);
+    mDispatcher->onWindowInfosChanged(
+            {{*spy1->getInfo(), *spy2->getInfo(), *spy3->getInfo(), *window->getInfo()}, {}, 0, 0});
+
+    // All windows receive the first pointer.
+    mDispatcher->notifyMotion(
+            MotionArgsBuilder(ACTION_DOWN, AINPUT_SOURCE_TOUCHSCREEN)
+                    .pointer(PointerBuilder(/*id=*/0, ToolType::FINGER).x(100).y(200))
+                    .build());
+    window->consumeMotionDown();
+    spy1->consumeMotionDown();
+    spy2->consumeMotionDown();
+    spy3->consumeMotionDown();
+
+    // Pilfer pointers from the second spy window.
+    EXPECT_EQ(OK, mDispatcher->pilferPointers(spy2->getToken()));
+    window->assertNoEvents();
+    spy1->consumeMotionCancel();
+    spy2->assertNoEvents();
+    spy3->assertNoEvents();
+
+    // The rest of the gesture should only be sent to the pilfering and do-not-pilfer windows.
+    mDispatcher->notifyMotion(
+            MotionArgsBuilder(ACTION_MOVE, AINPUT_SOURCE_TOUCHSCREEN)
+                    .pointer(PointerBuilder(/*id=*/0, ToolType::FINGER).x(100).y(200))
+                    .build());
+    window->consumeMotionMove();
+    spy1->assertNoEvents();
+    spy2->consumeMotionMove();
+    spy3->consumeMotionMove();
 }
 
 class InputDispatcherStylusInterceptorTest : public InputDispatcherTest {

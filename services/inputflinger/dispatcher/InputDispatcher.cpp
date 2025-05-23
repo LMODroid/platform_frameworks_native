@@ -5509,6 +5509,13 @@ void InputDispatcher::setInputWindowsLocked(
                                             WindowInfo::InputConfig::TRUSTED_OVERLAY),
                             "%s has feature INTERCEPTS_STYLUS, but is not a trusted overlay.",
                             window->getName().c_str());
+
+        // Ensure all do-not-pilfer requests come from trusted overlays
+        LOG_ALWAYS_FATAL_IF(info.inputConfig.test(WindowInfo::InputConfig::DO_NOT_PILFER) &&
+                                    !info.inputConfig.test(
+                                            WindowInfo::InputConfig::TRUSTED_OVERLAY),
+                            "%s has feature DO_NOT_PILFER, but is not a trusted overlay.",
+                            window->getName().c_str());
     }
 
     // Copy old handles for release if they are no longer present.
@@ -6374,13 +6381,20 @@ InputDispatcher::DispatcherTouchState::pilferPointers(const sp<IBinder>& token,
         std::bitset<MAX_POINTER_ID + 1> pointerIds = getPointerIds(pointers);
         std::string canceledWindows;
         for (const TouchedWindow& w : state.windows) {
-            if (w.windowHandle->getToken() != token) {
-                cancellations.emplace_back(w.windowHandle,
-                                           CancelationOptions::Mode::CANCEL_POINTER_EVENTS,
-                                           deviceId, displayId, pointerIds);
-                canceledWindows += canceledWindows.empty() ? "[" : ", ";
-                canceledWindows += w.windowHandle->getName();
+            if (w.windowHandle->getToken() == token) {
+                // Skip cancelling from pilfering window.
+                continue;
             }
+            if (w.windowHandle->getInfo()->inputConfig.test(
+                        WindowInfo::InputConfig::DO_NOT_PILFER)) {
+                // Skip cancelling from window with DO_NOT_PILFER flag.
+                continue;
+            }
+            cancellations.emplace_back(w.windowHandle,
+                                       CancelationOptions::Mode::CANCEL_POINTER_EVENTS, deviceId,
+                                       displayId, pointerIds);
+            canceledWindows += canceledWindows.empty() ? "[" : ", ";
+            canceledWindows += w.windowHandle->getName();
         }
         canceledWindows += canceledWindows.empty() ? "[]" : "]";
         LOG(INFO) << "Channel " << requestingConnection.getInputChannelName()
@@ -6391,7 +6405,7 @@ InputDispatcher::DispatcherTouchState::pilferPointers(const sp<IBinder>& token,
         // This only blocks relevant pointers to be sent to other windows
         window.addPilferingPointers(deviceId, pointerIds);
 
-        state.cancelPointersForWindowsExcept(deviceId, pointerIds, token);
+        state.cancelPointersForPilferingRequest(deviceId, pointerIds, token);
     }
     return cancellations;
 }

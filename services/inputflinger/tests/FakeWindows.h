@@ -188,6 +188,10 @@ public:
         mInfo.setInputConfig(InputConfig::GLOBAL_STYLUS_BLOCKS_TOUCH, shouldGlobalStylusBlockTouch);
     }
 
+    inline void setDoNotPilfer(bool doNotPilfer) {
+        mInfo.setInputConfig(InputConfig::DO_NOT_PILFER, doNotPilfer);
+    }
+
     inline void setAlpha(float alpha) { mInfo.alpha = alpha; }
 
     inline void setTouchOcclusionMode(gui::TouchOcclusionMode mode) {
