@@ -48,7 +48,6 @@ cc_defaults {
         "libsurfaceflinger_common_deps",
         "surfaceflinger_defaults",
         "libsurfaceflinger_proto_deps",
-        "surfaceflinger_mtk_ext_defaults",
     ],
     cflags: [
         "-DLOG_TAG=\"SurfaceFlinger\"",
@@ -56,6 +55,9 @@ cc_defaults {
         "-DEGL_EGLEXT_PROTOTYPES",
     ] + select(soong_config_variable("qtidisplay", "headers_namespace"), {
         any @ flag_val: ["-DQCOM_UM_FAMILY"],
+        default: [],
+    }) + select(soong_config_variable("surfaceflinger", "has_mtk_surfaceflinger"), {
+        "true": ["-DMTK_SKIP_SKIA_EXTERNAL_TEXTURE_CACHE"],
         default: [],
     }),
     shared_libs: [
