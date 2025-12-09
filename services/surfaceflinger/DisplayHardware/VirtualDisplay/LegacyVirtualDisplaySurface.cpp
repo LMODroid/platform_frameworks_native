@@ -686,7 +686,7 @@ std::string LegacyVirtualDisplaySurface::toString(CompositionType type) {
 
 /* Helper to update the output usage when the display is secure */
 
-void VirtualDisplaySurface::setOutputUsage(uint64_t /*flag*/) {
+void LegacyVirtualDisplaySurface::setOutputUsage(uint64_t /*flag*/) {
 
     mOutputUsage = mSinkUsage;
     if (mSecure && (mOutputUsage & GRALLOC_USAGE_HW_VIDEO_ENCODER)) {
